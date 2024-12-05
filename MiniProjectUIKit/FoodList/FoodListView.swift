@@ -17,14 +17,34 @@ protocol FoodListViewProtocol {
 
 class FoodListViewController: UIViewController, FoodListViewProtocol {
     // MARK: - COMPONENT
-    private let tableView: UITableView = UITableView()
-    private let messageLabel: UILabel = UILabel()
+    private let collectionView: UICollectionView
+    private let messageLabel: UILabel
     
-    //MARK: - PROPERTY
+    // MARK: - PROPERTY
     var presenter: FoodListPresenterProtocol?
     var foods: [Food] = []
     
-    //MARK: - LIFE CYCLE
+    // MARK: - INITIALIZER
+    init() {
+        // Initialize the collectionView
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .vertical
+        layout.itemSize = CGSize(width: UIScreen.main.bounds.width * 0.5 - 16, height: UIScreen.main.bounds.height * 0.3)
+        layout.minimumLineSpacing = 16
+        layout.minimumInteritemSpacing = 8
+        self.collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        
+        // Initialize the messageLabel
+        self.messageLabel = UILabel()
+        
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    // MARK: - LIFE CYCLE
     override func viewDidLoad() {
         super.viewDidLoad()
         style()
@@ -33,19 +53,21 @@ class FoodListViewController: UIViewController, FoodListViewProtocol {
     }
     
     override func viewDidAppear(_ animated: Bool) {
-        if let selectedIndex = tableView.indexPathForSelectedRow {
-            tableView.deselectRow(at: selectedIndex, animated: true)
+        if let selectedIndex = collectionView.indexPathsForSelectedItems?.first {
+            collectionView.deselectItem(at: selectedIndex, animated: true)
         }
     }
 }
 
+// MARK: - Extensions
 extension FoodListViewController {
     func style() {
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        tableView.isHidden = true
-        tableView.delegate = self
-        tableView.dataSource = self
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.showsVerticalScrollIndicator = false
+        collectionView.register(FoodCollectionViewCell.self, forCellWithReuseIdentifier: FoodCollectionViewCell.identifier)
+        collectionView.isHidden = true
+        collectionView.delegate = self
+        collectionView.dataSource = self
         
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         messageLabel.isHidden = false
@@ -55,16 +77,16 @@ extension FoodListViewController {
         messageLabel.textAlignment = .center
     }
     
-    func layout () {
-        view.addSubview(tableView)
+    func layout() {
+        view.addSubview(collectionView)
         view.addSubview(messageLabel)
         
-        // tableView
+        // collectionView
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
+            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 8),
+            collectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
         ])
         
         // messageLabel
@@ -81,15 +103,15 @@ extension FoodListViewController {
         DispatchQueue.main.async { [weak self] in
             self?.foods = foods
             self?.messageLabel.isHidden = true
-            self?.tableView.reloadData()
-            self?.tableView.isHidden = false
+            self?.collectionView.reloadData()
+            self?.collectionView.isHidden = false
         }
     }
     
     func update(with error: String) {
         DispatchQueue.main.async { [weak self] in
             self?.foods = []
-            self?.tableView.isHidden = true
+            self?.collectionView.isHidden = true
             
             self?.messageLabel.isHidden = false
             self?.messageLabel.text = error
@@ -97,25 +119,24 @@ extension FoodListViewController {
     }
 }
 
-// MARK: - UITableViewDelegate
-extension FoodListViewController: UITableViewDelegate {
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+// MARK: - UICollectionViewDelegate
+extension FoodListViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         presenter?.tapOnDetail(foods[indexPath.row])
     }
 }
 
-// MARK: - UITableViewDataSource
-extension FoodListViewController: UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+// MARK: - UICollectionViewDataSource
+extension FoodListViewController: UICollectionViewDataSource {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return foods.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
-        var content = cell.defaultContentConfiguration()
-        content.text = foods[indexPath.row].idMeal
-        content.secondaryText = "\(foods[indexPath.row].strCategory)"
-        cell.contentConfiguration = content
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: FoodCollectionViewCell.identifier, for: indexPath) as? FoodCollectionViewCell else {
+            return UICollectionViewCell()
+        }
+        cell.configure(with: foods[indexPath.row])
         return cell
     }
 }
