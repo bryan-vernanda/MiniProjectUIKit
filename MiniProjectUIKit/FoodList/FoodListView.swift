@@ -106,7 +106,6 @@ extension FoodListViewController: UITableViewDelegate {
 
 // MARK: - UITableViewDataSource
 extension FoodListViewController: UITableViewDataSource {
-    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return foods.count
     }
